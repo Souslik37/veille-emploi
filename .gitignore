@@ -1,0 +1,7 @@
+# Ignore everything by default
+*
+
+# Then un-ignore only what we want to publish
+!tracker.html
+!index.html
+!.gitignore
