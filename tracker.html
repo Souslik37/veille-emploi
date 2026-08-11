@@ -4,8 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Tracker Alex">
+<meta name="theme-color" content="#4f7af8">
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%234f7af8'/><text y='.9em' font-size='80' x='10'>💪</text></svg>">
 <title>Alex · Sport & Nutrition</title>
 <style>
 :root {
@@ -334,9 +337,17 @@ textarea{resize:vertical;min-height:60px}
   .mobile-nav{display:flex!important}
   .grid{grid-template-columns:1fr!important;gap:8px!important;padding:8px 12px 80px!important}
   .day{min-height:auto!important}
-  header{padding:8px 12px!important;flex-wrap:nowrap!important}
-  .week-label{min-width:120px!important;font-size:.78rem!important}
+  header{padding:6px 10px!important;flex-wrap:nowrap!important;gap:4px!important}
+  .h-title{font-size:.8rem!important;white-space:nowrap!important}
+  .h-title .title-full{display:none}
+  .h-title .title-short{display:inline!important}
+  .week-label{min-width:0!important;font-size:.72rem!important}
+  .week-nav button{padding:4px 8px!important;font-size:.75rem!important}
+  .btn-today{display:none!important}
+  .btn-weight{display:none!important}
   .stats{display:none!important}
+  /* Hide overflow header items on mobile — use bottom nav instead */
+  .btn-sync,.btn-shop,.btn-bilan{display:none!important}
 }
 .mobile-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--gray-b);padding:8px 0 max(8px,env(safe-area-inset-bottom));z-index:200;gap:0;box-shadow:0 -4px 20px rgba(0,0,0,.08)}
 .mobile-nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 4px;cursor:pointer;border:none;background:none;color:var(--muted);font-size:.62rem;font-weight:700;transition:.15s}
@@ -385,7 +396,7 @@ textarea{resize:vertical;min-height:60px}
 <body>
 
 <header>
-  <div class="h-title">💪 Tracker Sport & Nutrition</div>
+  <div class="h-title"><span class="title-full">💪 Tracker Sport & Nutrition</span><span class="title-short" style="display:none">💪 Tracker</span></div>
   <div class="week-nav">
     <button onclick="cw(-1)">‹ Préc.</button>
     <span class="week-label" id="wlabel"></span>
