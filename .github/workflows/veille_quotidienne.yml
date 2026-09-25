@@ -1,0 +1,43 @@
+name: Veille emploi quotidienne
+
+on:
+  schedule:
+    # 7h UTC = 8h CET (hiver) / 9h CEST (été) — lun à ven
+    - cron: '0 7 * * 1-5'
+  workflow_dispatch:  # permet un déclenchement manuel depuis l'UI GitHub
+
+jobs:
+  veille:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r veille_agent/requirements.txt
+
+      - name: Run agent
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          TAVILY_API_KEY:    ${{ secrets.TAVILY_API_KEY }}
+          RESEND_API_KEY:    ${{ secrets.RESEND_API_KEY }}
+          TO_EMAIL:          ${{ secrets.TO_EMAIL }}
+          FROM_EMAIL:        ${{ secrets.FROM_EMAIL }}
+          REPORT_DIR:        /tmp/veille_jobs
+        run: python veille_agent/agent.py
+
+      - name: Upload rapport (artefact GitHub pour debug)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rapport-${{ github.run_id }}
+          path: /tmp/veille_jobs/
+          retention-days: 7

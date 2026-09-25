@@ -5,3 +5,13 @@
 !tracker.html
 !index.html
 !.gitignore
+
+# Agent veille emploi
+!veille_agent/
+!veille_agent/**
+veille_agent/.env       # jamais committer les vraies clés
+
+# GitHub Actions
+!.github/
+!.github/workflows/
+!.github/workflows/*.yml
