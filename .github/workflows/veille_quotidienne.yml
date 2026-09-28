@@ -2,8 +2,8 @@ name: Veille emploi quotidienne
 
 on:
   schedule:
-    # 7h UTC = 8h CET (hiver) / 9h CEST (été) — lun à ven
-    - cron: '0 7 * * 1-5'
+    # 8h UTC = 9h CET (hiver) / 10h CEST (été) — lun à ven
+    - cron: '0 8 * * 1-5'
   workflow_dispatch:  # permet un déclenchement manuel depuis l'UI GitHub
 
 jobs:
