@@ -95,15 +95,15 @@ TOOLS = [
                             "properties": {
                                 "title":        {"type": "string"},
                                 "company":      {"type": "string"},
-                                "company_desc": {"type": "string"},
+                                "company_desc": {"type": ["string", "null"]},
                                 "url":          {"type": "string"},
                                 "stars":        {"type": "integer", "minimum": 1, "maximum": 5},
                                 "type":         {"type": "string", "enum": ["mgr", "ae", "bd", "gtm", "ops", "ass"]},
                                 "sector":       {"type": "string"},
                                 "loc":          {"type": "string", "enum": ["bxl", "be", "remote"]},
                                 "fit":          {"type": "string"},
-                                "is_new":       {"type": "boolean"},
-                                "posted_date":  {"type": "string", "description": "Date de publication de l'offre (ex: '2026-09-28' ou 'il y a 2 jours')"}
+                                "is_new":       {"type": ["boolean", "null"]},
+                                "posted_date":  {"type": ["string", "null"], "description": "Date de publication (ex: 'il y a 2 jours') ou null si inconnue"}
                             },
                             "required": ["title", "company", "url", "stars", "type", "sector", "loc", "fit"]
                         }
