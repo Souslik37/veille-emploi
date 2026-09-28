@@ -131,7 +131,7 @@ def search_jobs(query: str) -> dict:
             json={
                 "api_key": os.environ["TAVILY_API_KEY"],
                 "query": query,
-                "max_results": 5,
+                "max_results": 3,
                 "search_depth": "basic",
                 "include_answer": False,
             },
@@ -145,7 +145,7 @@ def search_jobs(query: str) -> dict:
                 {
                     "title":   r.get("title", ""),
                     "url":     r.get("url", ""),
-                    "snippet": r.get("content", "")[:400],
+                    "snippet": r.get("content", "")[:200],
                 }
                 for r in data.get("results", [])
             ],
@@ -319,7 +319,7 @@ def run_agent():
 
         response = client.chat.completions.create(
             model="openai/gpt-oss-120b",
-            max_tokens=8192,
+            max_tokens=4096,
             tools=TOOLS,
             tool_choice="auto",
             messages=messages,
