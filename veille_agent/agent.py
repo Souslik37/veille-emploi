@@ -230,7 +230,7 @@ def _build_email_html(jobs: list, top_insight: str, date_str: str) -> str:
   {cards}
 
   <div style="text-align:center;color:#aeaeb2;font-size:11px;margin-top:24px;padding-bottom:16px">
-    Agent autonome · Groq (llama-3.1-70b) + Tavily + Resend<br>
+    Agent autonome · Groq (gpt-oss-120b) + Tavily + Resend<br>
     Généré le {datetime.now().strftime('%d/%m/%Y à %H:%M UTC')}
   </div>
 </div>
@@ -318,7 +318,7 @@ def run_agent():
         print(f"\n── Iteration {iteration} ──")
 
         response = client.chat.completions.create(
-            model="llama-3.1-70b-versatile",
+            model="openai/gpt-oss-120b",
             max_tokens=8192,
             tools=TOOLS,
             tool_choice="auto",
