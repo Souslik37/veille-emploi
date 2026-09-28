@@ -194,8 +194,27 @@ def _build_email_html(jobs: list, top_insight: str, date_str: str) -> str:
      padding:8px 18px;border-radius:20px;font-size:12px;font-weight:600">Voir l'offre →</a>
 </div>"""
 
-    top_picks = [j for j in jobs if j["stars"] >= 4]
-    new_count = len([j for j in jobs if j.get("is_new")])
+    top_picks  = [j for j in jobs if j["stars"] >= 4]
+    new_jobs   = [j for j in sorted(jobs, key=lambda x: -x["stars"]) if j.get("is_new")]
+    new_count  = len(new_jobs)
+
+    new_section = ""
+    if new_jobs:
+        new_cards = ""
+        for job in new_jobs:
+            n = job["stars"]; stars = "★"*n+"☆"*(5-n); color = star_colors.get(n,"#98989D")
+            posted = job.get("posted_date","")
+            posted_html = f'<span style="color:#8e8e93;font-size:11px;margin-left:8px">📅 {posted}</span>' if posted else ""
+            new_cards += f"""<div style="background:#fff;border-radius:10px;padding:14px 16px;margin-bottom:8px;border-left:4px solid {color}">
+  <div style="font-size:14px;font-weight:700">{job['title']} — {job['company']}{posted_html}</div>
+  <div style="font-size:11.5px;color:#8e8e93;margin:2px 0 6px">{job.get('company_desc','')}</div>
+  <div style="font-size:12px;color:#1a7f37;margin-bottom:8px">{job['fit']}</div>
+  <a href="{job['url']}" style="background:#0071E3;color:#fff;text-decoration:none;padding:5px 12px;border-radius:14px;font-size:11px;font-weight:600">Voir →</a>
+</div>"""
+        new_section = f"""<div style="background:#FFF8E1;border-radius:14px;padding:16px 18px;margin-bottom:20px;border:1px solid #FFD600">
+  <div style="font-size:15px;font-weight:700;color:#8B6000;margin-bottom:12px">🔥 Nouveautés du jour ({new_count})</div>
+  {new_cards}
+</div>"""
 
     return f"""<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
@@ -215,23 +234,24 @@ def _build_email_html(jobs: list, top_insight: str, date_str: str) -> str:
         <div style="font-size:22px;font-weight:700">{len(top_picks)}</div>
         <div style="font-size:10px;color:#6e6e73;text-transform:uppercase;letter-spacing:.4px">top picks ★★★★+</div>
       </div>
-      <div style="background:#f5f5f7;border-radius:10px;padding:10px 16px;text-align:center">
-        <div style="font-size:22px;font-weight:700">{new_count}</div>
-        <div style="font-size:10px;color:#6e6e73;text-transform:uppercase;letter-spacing:.4px">nouvelles 48h</div>
+      <div style="background:#FFF8E1;border-radius:10px;padding:10px 16px;text-align:center;border:1px solid #FFD600">
+        <div style="font-size:22px;font-weight:700;color:#8B6000">{new_count}</div>
+        <div style="font-size:10px;color:#8B6000;text-transform:uppercase;letter-spacing:.4px">🔥 nouvelles 48h</div>
       </div>
     </div>
   </div>
 
-  <div style="background:#EAF0FB;border-radius:12px;padding:14px 18px;margin-bottom:20px;
+  <div style="background:#EAF0FB;border-radius:12px;padding:14px 18px;margin-bottom:16px;
        font-size:13px;color:#1A4FBF;line-height:1.6">
     <b>💡 Insight du jour :</b> {top_insight}
   </div>
 
+  {new_section}
+
   {cards}
 
   <div style="text-align:center;color:#aeaeb2;font-size:11px;margin-top:24px;padding-bottom:16px">
-    Agent autonome · Groq (gpt-oss-120b) + Tavily + Resend<br>
-    Généré le {datetime.now().strftime('%d/%m/%Y à %H:%M UTC')}
+    Agent autonome · Groq + Tavily + Resend · {datetime.now().strftime('%d/%m/%Y %H:%M UTC')}
   </div>
 </div>
 </body></html>"""
@@ -282,24 +302,28 @@ SYSTEM_PROMPT = f"""Tu es un agent de veille emploi pour :
 
 {PROFILE}
 
+LANGUE : Réponds toujours en français dans tes analyses et dans le champ `top_insight`.
+
 INSTRUCTIONS :
 1. Appelle `search_jobs` pour CHACUNE des {len(SEARCH_QUERIES)} requêtes suivantes (dans l'ordre) :
 {chr(10).join(f'   - "{q}"' for q in SEARCH_QUERIES)}
 
 2. Après TOUTES les recherches, analyse l'ensemble des résultats :
-   - Filtre : élimine articles, grandes entreprises, admins, postes nécessitant néerlandais
+   - ÉLIMINE immédiatement : articles de blog, grandes entreprises (>500 pers.), banques, consulting, admins, postes nécessitant le néerlandais, offres "no longer accepting applications", offres postées il y a plus de 60 jours
+   - ÉLIMINE les doublons (même poste vu plusieurs fois)
    - Score chaque offre pertinente de 1 à 5 étoiles
-   - Ne retiens que les ★★★ minimum dans le rapport final
+   - Ne retiens QUE les ★★★ minimum
 
-3. Appelle `send_report` UNE SEULE FOIS avec la liste finale.
+3. Pour chaque offre, extrais la date de publication si visible dans l'extrait ("posted 2 days ago" → "il y a 2 jours", "Sep 26" → "26 sept."). Si l'offre date de plus de 30 jours ou est clôturée : EXCLURE.
+   - `is_new` = true UNIQUEMENT si postée hier ou aujourd'hui (≤ 48h)
+
+4. Appelle `send_report` UNE SEULE FOIS avec la liste finale.
 
 Critères de scoring :
 ★★★★★ Country Lead, associate co-fondateur, Head of Sales, GTM Engineer chez startup IA/FinTech/SaaS belge
 ★★★★  Sales Manager, GTM Lead, RevOps, Sales Ops, Operational Lead chez scaleup B2B — bonne autonomie
 ★★★   BDM, AE senior, rôle intéressant mais secteur moins prioritaire
-★★    Trop junior, trop corporate, néerlandais requis, ou très grande entreprise (ne pas inclure)
-
-Pour chaque offre retenue, essaie de déterminer la date de publication visible dans l'extrait (ex: "posted 2 days ago", "il y a 3 jours", "Sep 26"). Mets-la dans `posted_date` sous forme lisible.
+★★    Trop junior, trop corporate, néerlandais requis, grande entreprise → NE PAS INCLURE
 """
 
 
