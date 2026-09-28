@@ -6,18 +6,17 @@ Architecture :
   GitHub Actions (cron 7h lun-ven)
       → agent.py
           → tool: search_jobs()   via Tavily API  (x10 requêtes)
-          → Claude analyse + score les résultats
+          → LLM analyse + score les résultats    (Groq — gratuit)
           → tool: send_report()   via Resend API  (email HTML)
 
-Pattern pédagogique : agentic loop avec tool_use Anthropic SDK.
-Claude décide lui-même quels outils appeler et dans quel ordre.
+Pattern : agentic loop avec tool_use (format OpenAI/Groq).
 """
 
-import anthropic
 import json
 import os
 import requests
 from datetime import datetime
+from groq import Groq
 
 # ─────────────────────────────────────────────────────────────────
 #  PROFIL & REQUÊTES
@@ -50,66 +49,69 @@ SEARCH_QUERIES = [
 ]
 
 # ─────────────────────────────────────────────────────────────────
-#  TOOLS — schémas JSON pour Claude
+#  TOOLS — schémas JSON (format OpenAI/Groq)
 # ─────────────────────────────────────────────────────────────────
-#
-#  Deux outils seulement. Claude appellera search_jobs() autant de
-#  fois qu'il le juge utile, puis send_report() une seule fois.
 
 TOOLS = [
     {
-        "name": "search_jobs",
-        "description": (
-            "Recherche des offres d'emploi sur le web via Tavily. "
-            "À appeler pour chaque requête de recherche. "
-            "Retourne titre, URL et extrait pour chaque résultat."
-        ),
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "query": {
-                    "type": "string",
-                    "description": "La requête de recherche exacte"
-                }
-            },
-            "required": ["query"]
+        "type": "function",
+        "function": {
+            "name": "search_jobs",
+            "description": (
+                "Recherche des offres d'emploi sur le web via Tavily. "
+                "À appeler pour chaque requête de recherche. "
+                "Retourne titre, URL et extrait pour chaque résultat."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "La requête de recherche exacte"
+                    }
+                },
+                "required": ["query"]
+            }
         }
     },
     {
-        "name": "send_report",
-        "description": (
-            "Génère le rapport HTML final et l'envoie par email. "
-            "À appeler UNE SEULE FOIS après avoir tout analysé."
-        ),
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "jobs": {
-                    "type": "array",
-                    "description": "Liste des offres retenues (★★★ minimum), triées par note décroissante",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "title":        {"type": "string", "description": "Intitulé du poste"},
-                            "company":      {"type": "string", "description": "Nom de l'entreprise"},
-                            "company_desc": {"type": "string", "description": "Secteur · stade · taille"},
-                            "url":          {"type": "string", "description": "URL directe de l'offre"},
-                            "stars":        {"type": "integer", "minimum": 1, "maximum": 5},
-                            "type":         {"type": "string", "enum": ["mgr", "ae", "bd", "gtm", "ass"]},
-                            "sector":       {"type": "string", "description": "ai | fintech | cleantech | saas-rh | marketplace | saas-b2b | sport | gaming | early"},
-                            "loc":          {"type": "string", "enum": ["bxl", "be", "remote"]},
-                            "fit":          {"type": "string", "description": "Pourquoi c'est pertinent pour Alexandre — 1 phrase"},
-                            "is_new":       {"type": "boolean", "description": "true si l'offre a été publiée aujourd'hui ou hier"}
-                        },
-                        "required": ["title", "company", "url", "stars", "type", "sector", "loc", "fit"]
+        "type": "function",
+        "function": {
+            "name": "send_report",
+            "description": (
+                "Génère le rapport HTML final et l'envoie par email. "
+                "À appeler UNE SEULE FOIS après avoir tout analysé."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "jobs": {
+                        "type": "array",
+                        "description": "Liste des offres retenues (★★★ minimum), triées par note décroissante",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "title":        {"type": "string"},
+                                "company":      {"type": "string"},
+                                "company_desc": {"type": "string"},
+                                "url":          {"type": "string"},
+                                "stars":        {"type": "integer", "minimum": 1, "maximum": 5},
+                                "type":         {"type": "string", "enum": ["mgr", "ae", "bd", "gtm", "ass"]},
+                                "sector":       {"type": "string"},
+                                "loc":          {"type": "string", "enum": ["bxl", "be", "remote"]},
+                                "fit":          {"type": "string"},
+                                "is_new":       {"type": "boolean"}
+                            },
+                            "required": ["title", "company", "url", "stars", "type", "sector", "loc", "fit"]
+                        }
+                    },
+                    "top_insight": {
+                        "type": "string",
+                        "description": "Tendance ou signal fort détecté ce cycle"
                     }
                 },
-                "top_insight": {
-                    "type": "string",
-                    "description": "Tendance ou signal fort détecté ce cycle (ex: 'Fort signal GTM en FinTech cette semaine')"
-                }
-            },
-            "required": ["jobs", "top_insight"]
+                "required": ["jobs", "top_insight"]
+            }
         }
     }
 ]
@@ -134,7 +136,6 @@ def search_jobs(query: str) -> dict:
         )
         resp.raise_for_status()
         data = resp.json()
-        # Tronquer les contenus pour ne pas exploser le contexte de Claude
         return {
             "query": query,
             "results": [
@@ -195,7 +196,7 @@ def _build_email_html(jobs: list, top_insight: str, date_str: str) -> str:
   <div style="background:#fff;border-radius:16px;padding:24px 28px;margin-bottom:16px;
        box-shadow:0 2px 12px rgba(0,0,0,.07)">
     <h1 style="font-size:22px;font-weight:700;margin:0 0 4px">Veille emploi — {date_str}</h1>
-    <p style="color:#6e6e73;font-size:13px;margin:0 0 16px">Alexandre Le Clercq · Agent autonome Anthropic + Tavily</p>
+    <p style="color:#6e6e73;font-size:13px;margin:0 0 16px">Alexandre Le Clercq · Agent autonome Groq + Tavily</p>
     <div style="display:flex;gap:10px;flex-wrap:wrap">
       <div style="background:#f5f5f7;border-radius:10px;padding:10px 16px;text-align:center">
         <div style="font-size:22px;font-weight:700">{len(jobs)}</div>
@@ -220,7 +221,7 @@ def _build_email_html(jobs: list, top_insight: str, date_str: str) -> str:
   {cards}
 
   <div style="text-align:center;color:#aeaeb2;font-size:11px;margin-top:24px;padding-bottom:16px">
-    Agent autonome · Anthropic API (claude-sonnet-4-5) + Tavily + Resend<br>
+    Agent autonome · Groq (llama-3.3-70b) + Tavily + Resend<br>
     Généré le {datetime.now().strftime('%d/%m/%Y à %H:%M UTC')}
   </div>
 </div>
@@ -233,14 +234,12 @@ def send_report(jobs: list, top_insight: str) -> dict:
     date_file = datetime.now().strftime("%Y%m%d")
     html      = _build_email_html(jobs, top_insight, date_str)
 
-    # — Sauvegarde locale (pour compatibilité avec CLAUDE.md) —
     out_dir = os.environ.get("REPORT_DIR", "/tmp/veille_jobs")
     os.makedirs(out_dir, exist_ok=True)
     for fname in [f"rapport_{date_file}.html", "latest.html"]:
         with open(os.path.join(out_dir, fname), "w", encoding="utf-8") as f:
             f.write(html)
 
-    # — Email via Resend —
     top3    = sorted(jobs, key=lambda x: -x["stars"])[:3]
     preview = " · ".join(f"{j['company']} ({j['stars']}★)" for j in top3)
 
@@ -267,18 +266,8 @@ def send_report(jobs: list, top_insight: str) -> dict:
 
 
 # ─────────────────────────────────────────────────────────────────
-#  AGENTIC LOOP
+#  AGENTIC LOOP (format OpenAI/Groq)
 # ─────────────────────────────────────────────────────────────────
-#
-#  Pattern : boucle while qui tourne jusqu'à stop_reason == "end_turn".
-#  À chaque itération :
-#    1. Claude répond (texte + éventuels tool_use)
-#    2. On exécute les tools demandés
-#    3. On renvoie les tool_result à Claude
-#    4. Claude décide si besoin d'autres tools, ou s'il a fini
-#
-#  C'est exactement ce que font LangChain, CrewAI, etc. — mais ici
-#  directement avec le SDK Anthropic, sans abstraction.
 
 SYSTEM_PROMPT = f"""Tu es un agent de veille emploi pour :
 
@@ -304,8 +293,11 @@ Critères de scoring :
 
 
 def run_agent():
-    client   = anthropic.Anthropic()
-    messages = [{"role": "user", "content": "Lance la veille emploi."}]
+    client   = Groq(api_key=os.environ["GROQ_API_KEY"])
+    messages = [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user",   "content": "Lance la veille emploi."},
+    ]
 
     print(f"🤖  Agent démarré — {datetime.now().strftime('%Y-%m-%d %H:%M UTC')}")
     iteration = 0
@@ -314,59 +306,66 @@ def run_agent():
         iteration += 1
         print(f"\n── Iteration {iteration} ──")
 
-        response = client.messages.create(
-            model="claude-sonnet-4-5",
+        response = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
             max_tokens=8192,
-            system=SYSTEM_PROMPT,
             tools=TOOLS,
+            tool_choice="auto",
             messages=messages,
         )
 
-        # Ajouter la réponse dans l'historique des messages
-        messages.append({"role": "assistant", "content": response.content})
+        choice  = response.choices[0]
+        message = choice.message
 
-        # Afficher les blocs de texte (réflexion interne de Claude)
-        for block in response.content:
-            if hasattr(block, "text") and block.text:
-                print(f"  Claude: {block.text[:120]}{'…' if len(block.text) > 120 else ''}")
+        if message.content:
+            print(f"  LLM: {message.content[:120]}{'…' if len(message.content or '') > 120 else ''}")
 
-        # Condition de sortie : plus aucun tool_use demandé
-        if response.stop_reason == "end_turn":
+        # Ajouter la réponse dans l'historique
+        msg_dict = {"role": "assistant", "content": message.content or ""}
+        if message.tool_calls:
+            msg_dict["tool_calls"] = [
+                {
+                    "id":       tc.id,
+                    "type":     "function",
+                    "function": {"name": tc.function.name, "arguments": tc.function.arguments},
+                }
+                for tc in message.tool_calls
+            ]
+        messages.append(msg_dict)
+
+        # Condition de sortie
+        if choice.finish_reason == "stop":
             print("\n✅  Agent terminé proprement.")
             break
 
-        if response.stop_reason != "tool_use":
-            print(f"⚠️  Stop inattendu : {response.stop_reason}")
+        if choice.finish_reason != "tool_calls" or not message.tool_calls:
+            print(f"⚠️  Stop inattendu : {choice.finish_reason}")
             break
 
-        # Exécuter tous les tool_use de cette itération
-        tool_results = []
-        for block in response.content:
-            if block.type != "tool_use":
-                continue
+        # Exécuter les tool calls
+        for tc in message.tool_calls:
+            name = tc.function.name
+            args = json.loads(tc.function.arguments)
 
-            print(f"  🔧  Tool call : {block.name}  args={list(block.input.keys())}")
+            print(f"  🔧  Tool call : {name}  args={list(args.keys())}")
 
-            if block.name == "search_jobs":
-                result = search_jobs(block.input["query"])
+            if name == "search_jobs":
+                result = search_jobs(args["query"])
                 n = len(result.get("results", []))
-                print(f"       → {n} résultats pour : {block.input['query'][:60]}")
+                print(f"       → {n} résultats pour : {args['query'][:60]}")
 
-            elif block.name == "send_report":
-                result = send_report(block.input["jobs"], block.input["top_insight"])
+            elif name == "send_report":
+                result = send_report(args["jobs"], args["top_insight"])
                 print(f"  ✉️   Email envoyé — {result}")
 
             else:
-                result = {"error": f"Outil inconnu : {block.name}"}
+                result = {"error": f"Outil inconnu : {name}"}
 
-            tool_results.append({
-                "type":        "tool_result",
-                "tool_use_id": block.id,
-                "content":     json.dumps(result, ensure_ascii=False),
+            messages.append({
+                "role":         "tool",
+                "tool_call_id": tc.id,
+                "content":      json.dumps(result, ensure_ascii=False),
             })
-
-        # Renvoyer les résultats à Claude pour qu'il continue
-        messages.append({"role": "user", "content": tool_results})
 
 
 if __name__ == "__main__":
