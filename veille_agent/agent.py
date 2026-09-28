@@ -36,16 +36,18 @@ Langues : français natif, anglais professionnel.
 """
 
 SEARCH_QUERIES = [
-    'site:linkedin.com/jobs "Head of Sales" OR "Co-Head of Sales" Belgium startup 2026',
+    'site:linkedin.com/jobs "Head of Sales" OR "VP Sales" Belgium startup 2026',
     'site:linkedin.com/jobs "Sales Manager" OR "Sales Team Lead" Bruxelles startup scaleup',
-    'site:linkedin.com/jobs "Go-to-Market" OR "GTM" OR "RevOps" Belgium startup',
+    'site:linkedin.com/jobs "GTM Engineer" OR "Go-to-Market Engineer" Belgium startup',
+    'site:linkedin.com/jobs "RevOps" OR "Revenue Operations" OR "Sales Operations" Belgium startup',
+    'site:linkedin.com/jobs "Operational Lead" OR "Operations Lead" Belgium startup scaleup',
     'site:linkedin.com/jobs "Country Manager" OR "Country Lead" Belgium startup',
     'site:linkedin.com/jobs "associate" OR "founding sales" Belgium startup equity',
     'site:linkedin.com/jobs Leexi OR TechWolf OR Wooclap OR Nodalview sales Belgium',
-    'site:welcometothejungle.com sales manager bruxelles startup',
-    'site:welcometothejungle.com "country manager" belgique startup',
+    'site:welcometothejungle.com "GTM" OR "RevOps" OR "Sales Ops" belgique startup',
+    'site:welcometothejungle.com sales manager OR "country manager" bruxelles startup',
     '"bras droit" fondateur commercial Belgique startup 2026',
-    '"founding account executive" OR "founding sales" Belgium startup',
+    '"founding account executive" OR "founding sales" OR "GTM engineer" Belgium startup',
 ]
 
 # ─────────────────────────────────────────────────────────────────
@@ -96,11 +98,12 @@ TOOLS = [
                                 "company_desc": {"type": "string"},
                                 "url":          {"type": "string"},
                                 "stars":        {"type": "integer", "minimum": 1, "maximum": 5},
-                                "type":         {"type": "string", "enum": ["mgr", "ae", "bd", "gtm", "ass"]},
+                                "type":         {"type": "string", "enum": ["mgr", "ae", "bd", "gtm", "ops", "ass"]},
                                 "sector":       {"type": "string"},
                                 "loc":          {"type": "string", "enum": ["bxl", "be", "remote"]},
                                 "fit":          {"type": "string"},
-                                "is_new":       {"type": "boolean"}
+                                "is_new":       {"type": "boolean"},
+                                "posted_date":  {"type": "string", "description": "Date de publication de l'offre (ex: '2026-09-28' ou 'il y a 2 jours')"}
                             },
                             "required": ["title", "company", "url", "stars", "type", "sector", "loc", "fit"]
                         }
@@ -154,35 +157,41 @@ def search_jobs(query: str) -> dict:
 def _build_email_html(jobs: list, top_insight: str, date_str: str) -> str:
     """Construit le HTML de l'email de rapport."""
     star_colors = {5: "#FFB800", 4: "#30D158", 3: "#32ADE6", 2: "#98989D", 1: "#98989D"}
-    type_labels  = {"mgr": "Manager", "ae": "Account Executive", "bd": "BizDev", "gtm": "GTM/RevOps", "ass": "Associate"}
+    type_labels  = {"mgr": "Manager", "ae": "Account Executive", "bd": "BizDev", "gtm": "GTM/RevOps", "ops": "Sales Ops", "ass": "Associate"}
 
     cards = ""
     for job in sorted(jobs, key=lambda x: -x["stars"]):
         n     = job["stars"]
         stars = "★" * n + "☆" * (5 - n)
         color = star_colors.get(n, "#98989D")
-        new   = (
+        new_badge = (
             '<span style="background:#FF3B30;color:#fff;border-radius:12px;'
-            'padding:2px 8px;font-size:11px;font-weight:700;margin-right:6px">NOUVEAU</span>'
+            'padding:2px 8px;font-size:11px;font-weight:700;margin-right:6px">🆕 NOUVEAU</span>'
             if job.get("is_new") else ""
         )
+        posted = job.get("posted_date", "")
+        posted_html = f'<span style="color:#8e8e93;font-size:11px;margin-left:8px">📅 {posted}</span>' if posted else ""
         cards += f"""
 <div style="background:#fff;border-radius:12px;padding:16px 18px;margin-bottom:12px;
      border-left:4px solid {color};box-shadow:0 1px 6px rgba(0,0,0,.06)">
-  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px">
-    <span style="font-size:15px;font-weight:700">{new}{job['title']}</span>
-    <span style="font-size:13px;color:#FFB800;letter-spacing:2px;padding-left:8px;white-space:nowrap">{stars}</span>
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+    <div>
+      <div style="font-size:15px;font-weight:700;margin-bottom:2px">{new_badge}{job['title']}</div>
+      <div style="font-size:13px;font-weight:600;color:#3c3c43">{job['company']}{posted_html}</div>
+      <div style="font-size:11.5px;color:#8e8e93;font-style:italic;margin-top:2px">{job.get('company_desc','')}</div>
+    </div>
+    <span style="font-size:16px;color:#FFB800;letter-spacing:2px;padding-left:12px;white-space:nowrap">{stars}</span>
   </div>
-  <div style="font-size:13px;font-weight:600;color:#3c3c43;margin-bottom:2px">{job['company']}</div>
-  <div style="font-size:11.5px;color:#8e8e93;font-style:italic;margin-bottom:8px">{job.get('company_desc','')}</div>
-  <div style="margin-bottom:8px">
-    <span style="background:#FFF3CD;color:#85600A;border-radius:12px;padding:2px 8px;font-size:11px;margin-right:4px">{type_labels.get(job['type'], job['type'])}</span>
-    <span style="background:#EAF0FB;color:#1A4FBF;border-radius:12px;padding:2px 8px;font-size:11px;margin-right:4px">{job['sector']}</span>
-    <span style="background:#E8FAF0;color:#1A7F45;border-radius:12px;padding:2px 8px;font-size:11px">{job['loc']}</span>
+  <div style="margin:10px 0 8px">
+    <span style="background:#FFF3CD;color:#85600A;border-radius:12px;padding:3px 10px;font-size:11px;font-weight:600;margin-right:4px">{type_labels.get(job['type'], job['type'])}</span>
+    <span style="background:#EAF0FB;color:#1A4FBF;border-radius:12px;padding:3px 10px;font-size:11px;margin-right:4px">{job['sector']}</span>
+    <span style="background:#E8FAF0;color:#1A7F45;border-radius:12px;padding:3px 10px;font-size:11px">{job['loc']}</span>
   </div>
-  <div style="background:#F0FFF4;border-radius:8px;padding:8px 10px;font-size:12px;color:#1a7f37;margin-bottom:10px">{job['fit']}</div>
+  <div style="background:#F0FFF4;border-left:3px solid #30D158;border-radius:0 8px 8px 0;padding:10px 12px;font-size:12.5px;color:#1a7f37;margin-bottom:12px;line-height:1.5">
+    <b>Pourquoi toi :</b> {job['fit']}
+  </div>
   <a href="{job['url']}" style="display:inline-block;background:#0071E3;color:#fff;text-decoration:none;
-     padding:6px 14px;border-radius:16px;font-size:12px;font-weight:600">Voir l'offre →</a>
+     padding:8px 18px;border-radius:20px;font-size:12px;font-weight:600">Voir l'offre →</a>
 </div>"""
 
     top_picks = [j for j in jobs if j["stars"] >= 4]
@@ -221,7 +230,7 @@ def _build_email_html(jobs: list, top_insight: str, date_str: str) -> str:
   {cards}
 
   <div style="text-align:center;color:#aeaeb2;font-size:11px;margin-top:24px;padding-bottom:16px">
-    Agent autonome · Groq (llama-3.3-70b) + Tavily + Resend<br>
+    Agent autonome · Groq (llama3-70b) + Tavily + Resend<br>
     Généré le {datetime.now().strftime('%d/%m/%Y à %H:%M UTC')}
   </div>
 </div>
@@ -274,7 +283,7 @@ SYSTEM_PROMPT = f"""Tu es un agent de veille emploi pour :
 {PROFILE}
 
 INSTRUCTIONS :
-1. Appelle `search_jobs` pour CHACUNE des requêtes suivantes (dans l'ordre) :
+1. Appelle `search_jobs` pour CHACUNE des {len(SEARCH_QUERIES)} requêtes suivantes (dans l'ordre) :
 {chr(10).join(f'   - "{q}"' for q in SEARCH_QUERIES)}
 
 2. Après TOUTES les recherches, analyse l'ensemble des résultats :
@@ -285,10 +294,12 @@ INSTRUCTIONS :
 3. Appelle `send_report` UNE SEULE FOIS avec la liste finale.
 
 Critères de scoring :
-★★★★★ Country Lead, associate co-fondateur, Head of Sales chez startup IA/FinTech/SaaS belge
-★★★★  Sales Manager, GTM Lead, RevOps chez scaleup B2B — bonne autonomie marché
+★★★★★ Country Lead, associate co-fondateur, Head of Sales, GTM Engineer chez startup IA/FinTech/SaaS belge
+★★★★  Sales Manager, GTM Lead, RevOps, Sales Ops, Operational Lead chez scaleup B2B — bonne autonomie
 ★★★   BDM, AE senior, rôle intéressant mais secteur moins prioritaire
-★★    Trop junior, trop corporate, ou localisation difficile (ne pas inclure)
+★★    Trop junior, trop corporate, néerlandais requis, ou très grande entreprise (ne pas inclure)
+
+Pour chaque offre retenue, essaie de déterminer la date de publication visible dans l'extrait (ex: "posted 2 days ago", "il y a 3 jours", "Sep 26"). Mets-la dans `posted_date` sous forme lisible.
 """
 
 
@@ -307,7 +318,7 @@ def run_agent():
         print(f"\n── Iteration {iteration} ──")
 
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="llama3-70b-8192",
             max_tokens=8192,
             tools=TOOLS,
             tool_choice="auto",
