@@ -250,8 +250,13 @@ def _build_email_html(jobs: list, top_insight: str, date_str: str) -> str:
 
   {cards}
 
-  <div style="text-align:center;color:#aeaeb2;font-size:11px;margin-top:24px;padding-bottom:16px">
-    Agent autonome · Groq + Tavily + Resend · {datetime.now().strftime('%d/%m/%Y %H:%M UTC')}
+  <div style="text-align:center;margin-top:24px;padding-bottom:16px">
+    <a href="https://souslik37.github.io/veille-emploi/latest.html"
+       style="display:inline-block;background:#f5f5f7;color:#3c3c43;text-decoration:none;
+              padding:10px 20px;border-radius:20px;font-size:13px;font-weight:600;margin-bottom:12px">
+      📄 Voir le rapport complet →
+    </a>
+    <div style="color:#aeaeb2;font-size:11px">Agent autonome · Groq + Tavily + Resend · {datetime.now().strftime('%d/%m/%Y %H:%M UTC')}</div>
   </div>
 </div>
 </body></html>"""

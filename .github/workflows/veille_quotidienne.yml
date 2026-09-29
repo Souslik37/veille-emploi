@@ -10,6 +10,8 @@ jobs:
   veille:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: write  # nécessaire pour pusher le rapport vers GitHub Pages
 
     steps:
       - name: Checkout
@@ -34,10 +36,16 @@ jobs:
           REPORT_DIR:        /tmp/veille_jobs
         run: python veille_agent/agent.py
 
-      - name: Upload rapport (artefact GitHub pour debug)
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: rapport-${{ github.run_id }}
-          path: /tmp/veille_jobs/
-          retention-days: 7
+      - name: Publier rapport sur GitHub Pages
+        if: success()
+        run: |
+          mkdir -p docs
+          cp /tmp/veille_jobs/latest.html docs/index.html
+          cp /tmp/veille_jobs/latest.html docs/latest.html
+          DATE=$(date +%Y%m%d)
+          cp /tmp/veille_jobs/latest.html docs/rapport_${DATE}.html
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/
+          git commit -m "chore: rapport veille ${DATE}" || echo "Rien à committer"
+          git push
