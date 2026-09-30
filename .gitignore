@@ -15,3 +15,7 @@ veille_agent/.env       # jamais committer les vraies clés
 !.github/
 !.github/workflows/
 !.github/workflows/*.yml
+
+# GitHub Pages rapport
+!docs/
+!docs/**
