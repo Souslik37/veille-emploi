@@ -134,6 +134,7 @@ def search_jobs(query: str) -> dict:
                 "max_results": 3,
                 "search_depth": "basic",
                 "include_answer": False,
+                "days": 30,
             },
             timeout=15,
         )
@@ -307,19 +308,24 @@ SYSTEM_PROMPT = f"""Tu es un agent de veille emploi pour :
 
 {PROFILE}
 
-LANGUE : Réponds toujours en français dans tes analyses et dans le champ `top_insight`.
+LANGUE OBLIGATOIRE : Tout le contenu que tu génères doit être en français SANS EXCEPTION.
+Cela inclut les champs `fit`, `top_insight`, `company_desc`, et tous tes raisonnements.
+Jamais d'anglais dans ces champs, même si l'offre originale est en anglais.
 
 INSTRUCTIONS :
 1. Appelle `search_jobs` pour CHACUNE des {len(SEARCH_QUERIES)} requêtes suivantes (dans l'ordre) :
 {chr(10).join(f'   - "{q}"' for q in SEARCH_QUERIES)}
 
 2. Après TOUTES les recherches, analyse l'ensemble des résultats :
-   - ÉLIMINE immédiatement : articles de blog, grandes entreprises (>500 pers.), banques, consulting, admins, postes nécessitant le néerlandais, offres "no longer accepting applications", offres postées il y a plus de 60 jours
+   - ÉLIMINE immédiatement : articles de blog, grandes entreprises (>500 pers.), banques, consulting, admins, postes nécessitant le néerlandais, offres "no longer accepting applications"
    - ÉLIMINE les doublons (même poste vu plusieurs fois)
    - Score chaque offre pertinente de 1 à 5 étoiles
    - Ne retiens QUE les ★★★ minimum
 
-3. Pour chaque offre, extrais la date de publication si visible dans l'extrait ("posted 2 days ago" → "il y a 2 jours", "Sep 26" → "26 sept."). Si l'offre date de plus de 30 jours ou est clôturée : EXCLURE.
+3. FILTRE DE DATE — RÈGLE ABSOLUE :
+   - Si une date est visible dans l'extrait : convertis-la ("posted 2 days ago" → "il y a 2 jours", "Sep 26" → "26 sept.")
+   - Si l'offre date de plus de 30 jours → EXCLURE sans exception
+   - Si AUCUNE date n'est visible dans l'extrait → EXCLURE (ne jamais inclure une offre sans date confirmée)
    - `is_new` = true UNIQUEMENT si postée hier ou aujourd'hui (≤ 48h)
 
 4. Appelle `send_report` UNE SEULE FOIS avec la liste finale.
