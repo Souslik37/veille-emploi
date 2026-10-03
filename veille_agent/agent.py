@@ -208,21 +208,30 @@ _PAGES_JS = """
   const dismissed = new Set(JSON.parse(sessionStorage.getItem('vd') || '[]'));
   dismissed.forEach(id => { const el = document.getElementById(id); if(el) el.style.display='none'; });
 
-  let activeType = null, minStars = 0;
+  let activeType = null, activeLoc = null, activeSect = null, minStars = 0;
   function applyFilters() {
     document.querySelectorAll('.card').forEach(card => {
       if(dismissed.has(card.id)) return;
-      const ok = (!activeType || card.dataset.type === activeType) && parseInt(card.dataset.stars) >= minStars;
+      const ok = (!activeType || card.dataset.type === activeType)
+              && (!activeLoc  || card.dataset.loc  === activeLoc)
+              && (!activeSect || card.dataset.sect === activeSect)
+              && parseInt(card.dataset.stars) >= minStars;
       card.style.display = ok ? '' : 'none';
     });
   }
-  document.querySelectorAll('.type-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      activeType = (activeType === btn.dataset.type) ? null : btn.dataset.type;
-      document.querySelectorAll('.type-btn').forEach(b => b.classList.toggle('active', b.dataset.type === activeType));
-      applyFilters();
+  function makeToggle(btnClass, varGetter, varSetter, attr) {
+    document.querySelectorAll('.' + btnClass).forEach(btn => {
+      btn.addEventListener('click', () => {
+        const val = btn.dataset[attr];
+        varSetter(varGetter() === val ? null : val);
+        document.querySelectorAll('.' + btnClass).forEach(b => b.classList.toggle('active', b.dataset[attr] === varGetter()));
+        applyFilters();
+      });
     });
-  });
+  }
+  makeToggle('type-btn', () => activeType, v => activeType = v, 'type');
+  makeToggle('loc-btn',  () => activeLoc,  v => activeLoc  = v, 'loc');
+  makeToggle('sect-btn', () => activeSect, v => activeSect = v, 'sect');
   document.querySelectorAll('.stars-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const v = parseInt(btn.dataset.min);
@@ -365,7 +374,8 @@ def _card_html(job: dict, idx: int) -> str:
     loc_cls = "tag tloc" + (" tremote" if loc == "remote" else "")
     type_cls = "tag ttype" + (" tmed" if is_med else "")
     fit_cls = "fit fitmed" if is_med else "fit"
-    return f"""<div class="{card_cls}" id="j{idx}" data-type="{t}" data-stars="{n}">
+    sect = job.get("sector", "")
+    return f"""<div class="{card_cls}" id="j{idx}" data-type="{t}" data-stars="{n}" data-loc="{loc}" data-sect="{sect}">
   <button class="dismiss" title="Masquer">×</button>
   <div class="ctitle">{job['title']}</div>
   <div class="cco">{job['company']} <span class="stars">{stars}</span></div>
@@ -423,9 +433,20 @@ def _build_pages_html(jobs: list, top_insight: str, date_str: str) -> str:
 
     # Filter buttons
     types_present = sorted(set(j.get("type", "mgr") for j in jobs))
-    type_btns = '<button class="fbtn type-btn" data-type="">Tous</button>' + "".join(
+    type_btns = "".join(
         f'<button class="fbtn type-btn" data-type="{t}">{_TYPE_LABELS.get(t, t)}</button>'
         for t in types_present
+    )
+    _LOC_LABELS = {"bxl": "📍 Bruxelles", "be": "🇧🇪 Belgique", "remote": "🌐 Remote"}
+    locs_present = sorted(set(j.get("loc", "bxl") for j in jobs))
+    loc_btns = "".join(
+        f'<button class="fbtn loc-btn" data-loc="{l}">{_LOC_LABELS.get(l, l)}</button>'
+        for l in locs_present
+    )
+    sects_present = sorted(set(j.get("sector", "") for j in jobs if j.get("sector")))
+    sect_btns = "".join(
+        f'<button class="fbtn sect-btn" data-sect="{s}">{s}</button>'
+        for s in sects_present
     )
 
     return f"""<!DOCTYPE html>
@@ -445,8 +466,10 @@ def _build_pages_html(jobs: list, top_insight: str, date_str: str) -> str:
   <div class="insight"><b>💡 Insight du jour :</b> {top_insight}</div>
   <div class="filters">
     <div class="frow"><span class="flabel">Type</span>{type_btns}</div>
+    <div class="frow"><span class="flabel">Lieu</span>{loc_btns}</div>
+    <div class="frow"><span class="flabel">Secteur</span>{sect_btns}</div>
     <div class="frow"><span class="flabel">Stars</span>
-      <button class="fbtn stars-btn" data-min="5">★★★★★ only</button>
+      <button class="fbtn stars-btn" data-min="5">★★★★★</button>
       <button class="fbtn stars-btn" data-min="4">★★★★+</button>
       <button class="fbtn stars-btn" data-min="3">★★★+</button>
     </div>
@@ -673,13 +696,17 @@ _STALE_SIGNALS = ["mois", "month", "no longer accepting", "plus disponible", "cl
 def _is_stale(job: dict) -> bool:
     pd = (job.get("posted_date") or "").lower()
     if not pd:
-        return True
+        return False  # pas de date → on laisse passer, le LLM a déjà filtré
     return any(s in pd for s in _STALE_SIGNALS)
 
 
+_MOIS_FR = ["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"]
+
+
 def send_report(jobs: list, top_insight: str) -> dict:
-    date_str  = datetime.now().strftime("%d %B %Y")
-    date_file = datetime.now().strftime("%Y%m%d")
+    now = datetime.now()
+    date_str  = f"{now.day} {_MOIS_FR[now.month - 1]} {now.year}"
+    date_file = now.strftime("%Y%m%d")
 
     before = len(jobs)
     jobs = [j for j in jobs if not _is_stale(j)]
