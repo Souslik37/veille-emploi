@@ -62,19 +62,28 @@ SEARCH_QUERIES = [
     'site:welcometothejungle.com sales manager OR "country manager" bruxelles startup',
     '"bras droit" fondateur commercial Belgique startup 2026',
     '"founding account executive" OR "founding sales" OR "GTM engineer" Belgium startup',
-    # ── Secteur Santé — 12 requêtes larges ────────────────────
+    # ── Secteur Santé — 16 requêtes larges (LinkedIn + Indeed + Medination + sites hôpitaux) ──
+    # LinkedIn
     'site:linkedin.com/jobs "chef de projet" OR "coordinateur" OR "responsable opérations" CHIREC OR "Saint-Luc" OR Erasme OR CHU Bruxelles 2026',
-    'site:linkedin.com/jobs "business analyst" OR "data analyst" OR manager "cliniques de l\'Europe" OR "cliniques universitaires" OR "Bois de la Pierre" Belgique',
     'site:linkedin.com/jobs "chef de projet" OR "coordinateur" OR manager Vivalia OR "CHR Liège" OR "CHR Namur" OR "CHR Mons" 2026',
-    'site:linkedin.com/jobs "responsable" OR "directeur" OR "project manager" clinique OR hôpital Wallonie 2026',
-    'site:linkedin.com/jobs INAMI OR IRISCARE OR "mutualité chrétienne" OR "Solidaris" OR "mutualité neutre" coordinateur OR manager OR analyste',
-    '"fédération hospitalière" OR "fédération des maisons médicales" OR "Croix-Rouge Belgique" chef de projet OR chargé de mission OR manager 2026',
+    'site:linkedin.com/jobs INAMI OR IRISCARE OR "mutualité chrétienne" OR "Solidaris" coordinateur OR manager OR analyste OR "chargé de mission"',
     'site:linkedin.com/jobs "digital health" OR "e-santé" OR healthtech OR medtech Belgium operations OR "project manager" OR GTM 2026',
     'site:linkedin.com/jobs pharma OR pharmaceutical OR biotech "project manager" OR "business development" OR "account manager" Belgique Belgium 2026',
-    '"responsable opérations" OR "chef de projet" OR "coordinateur médical" hôpital OR clinique Bruxelles OR Wallonie 2026',
-    '"business analyst" OR "analyste performance" santé OR healthcare OR soins Belgique 2026',
-    '"operations manager" OR "chargé de mission" OR "responsable" mutualité OR assurance-maladie OR pharma Belgique 2026',
-    '"directeur adjoint" OR "directeur opérationnel" OR "responsable qualité" OR "cadre" santé OR hôpital OR clinique Belgique 2026',
+    # Indeed Belgique
+    'site:indeed.com "chef de projet" OR "coordinateur" OR "responsable" hôpital OR clinique OR santé Belgique 2026',
+    'site:indeed.com "business analyst" OR "analyste" OR "chargé de mission" santé OR healthcare OR mutualité Belgique 2026',
+    'site:indeed.com "operations manager" OR "directeur opérationnel" OR manager santé OR hôpital OR pharma Belgique 2026',
+    'site:indeed.com healthtech OR medtech OR pharma "project manager" OR GTM OR commercial Belgique Belgium 2026',
+    # Medination (job board santé belge)
+    'site:medination.com "manager" OR "coordinateur" OR "chef de projet" OR "analyste" OR "directeur"',
+    'site:medination.com "responsable" OR "chargé de mission" OR "business developer" OR "account manager"',
+    # Sites carrières des hôpitaux belges
+    'site:chirec.be OR site:vivalia.be OR site:chu-liege.be emploi OR job OR carrière OR recrutement manager OR coordinateur OR chef de projet',
+    'site:saintluc.be OR site:erasme.ulb.ac.be OR site:chuliege.be emploi OR carrières manager OR coordinateur OR responsable',
+    'site:chrnambur.be OR site:chrmons.be OR site:chrcitadelle.be emploi OR carrière OR "offre d\'emploi" manager OR coordinateur',
+    # Large sans filtre (Stepstone, References, FOREM, ACTIRIS)
+    '"responsable opérations" OR "chef de projet" OR "chargé de mission" hôpital OR clinique OR mutualité Bruxelles OR Wallonie 2026',
+    '"business analyst" OR "analyste performance" OR "data analyst" santé OR healthcare OR soins Belgique 2026',
 ]
 
 # ─────────────────────────────────────────────────────────────────
@@ -725,7 +734,7 @@ Les champs `fit`, `top_insight`, `company_desc` et tous tes raisonnements doiven
 même si l'offre originale est en anglais.
 
 INSTRUCTIONS :
-1. Appelle `search_jobs` pour CHACUNE des {len(SEARCH_QUERIES)} requêtes suivantes (dans l'ordre) :
+1. Appelle `search_jobs` pour CHACUNE des {len(SEARCH_QUERIES)} requêtes suivantes (dans l'ordre, SANS EN SAUTER AUCUNE) :
 {chr(10).join(f'   - "{q}"' for q in SEARCH_QUERIES)}
 
 2. Après TOUTES les recherches, analyse et filtre :
