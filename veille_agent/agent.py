@@ -12,6 +12,7 @@ Architecture :
 
 import json
 import os
+import time
 import requests
 from datetime import datetime
 from groq import Groq
@@ -891,7 +892,7 @@ def search_jobs(query: str) -> dict:
                 {
                     "title": r.get("title", ""),
                     "url": r.get("url", ""),
-                    "snippet": r.get("content", "")[:300],
+                    "snippet": r.get("content", "")[:150],  # réduit pour alléger le contexte LLM
                     "published_date": r.get("published_date", None),
                 }
                 for r in data.get("results", [])
@@ -1078,13 +1079,26 @@ def run_agent():
         iteration += 1
         print(f"\n── Iteration {iteration} ──")
 
-        response = client.chat.completions.create(
-            model="openai/gpt-oss-120b",
-            max_tokens=4096,
-            tools=TOOLS,
-            tool_choice="auto",
-            messages=messages,
-        )
+        # Retry Groq avec backoff exponentiel (rate limit / erreurs réseau)
+        response = None
+        for attempt in range(4):
+            try:
+                response = client.chat.completions.create(
+                    model="openai/gpt-oss-120b",
+                    max_tokens=8192,
+                    tools=TOOLS,
+                    tool_choice="auto",
+                    messages=messages,
+                )
+                break
+            except Exception as e:
+                wait = 15 * (2 ** attempt)
+                print(f"  ⚠️  Groq erreur tentative {attempt+1}/4 : {e} — attente {wait}s")
+                if attempt == 3:
+                    raise
+                time.sleep(wait)
+        if response is None:
+            raise RuntimeError("Groq API inaccessible après 4 tentatives")
 
         choice  = response.choices[0]
         message = choice.message
