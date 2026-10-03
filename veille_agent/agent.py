@@ -450,7 +450,12 @@ def search_jobs(query: str) -> dict:
         return {
             "query": query,
             "results": [
-                {"title": r.get("title", ""), "url": r.get("url", ""), "snippet": r.get("content", "")[:200]}
+                {
+                    "title": r.get("title", ""),
+                    "url": r.get("url", ""),
+                    "snippet": r.get("content", "")[:300],
+                    "published_date": r.get("published_date", None),
+                }
                 for r in data.get("results", [])
             ],
         }
@@ -458,9 +463,25 @@ def search_jobs(query: str) -> dict:
         return {"query": query, "error": str(e), "results": []}
 
 
+_STALE_SIGNALS = ["mois", "month", "no longer accepting", "plus disponible", "closed", "fermé"]
+
+
+def _is_stale(job: dict) -> bool:
+    pd = (job.get("posted_date") or "").lower()
+    if not pd:
+        return True
+    return any(s in pd for s in _STALE_SIGNALS)
+
+
 def send_report(jobs: list, top_insight: str) -> dict:
     date_str  = datetime.now().strftime("%d %B %Y")
     date_file = datetime.now().strftime("%Y%m%d")
+
+    before = len(jobs)
+    jobs = [j for j in jobs if not _is_stale(j)]
+    filtered_count = before - len(jobs)
+    if filtered_count:
+        print(f"  🗑️   {filtered_count} offre(s) trop ancienne(s) supprimée(s) (filtre programmatique)")
 
     html_pages = _build_pages_html(jobs, top_insight, date_str)
     html_email = _build_email_html(jobs, top_insight, date_str)
@@ -496,6 +517,8 @@ SYSTEM_PROMPT = f"""Tu es un agent de veille emploi pour :
 
 {PROFILE}
 
+DATE D'AUJOURD'HUI : {datetime.now().strftime('%d %B %Y')}
+
 LANGUE OBLIGATOIRE : Tout le contenu généré doit être en FRANÇAIS sans exception.
 Les champs `fit`, `top_insight`, `company_desc` et tous tes raisonnements doivent être en français,
 même si l'offre originale est en anglais.
@@ -505,15 +528,19 @@ INSTRUCTIONS :
 {chr(10).join(f'   - "{q}"' for q in SEARCH_QUERIES)}
 
 2. Après TOUTES les recherches, analyse et filtre :
-   - EXCLURE : articles de blog, grandes entreprises (>500 pers.), banques, consultings classiques, néerlandais obligatoire, offres "no longer accepting applications"
+   - EXCLURE ABSOLUMENT : "no longer accepting applications", "4 months ago", "3 months ago", "2 months ago", tout ce qui est > 30 jours
+   - EXCLURE : articles de blog, grandes entreprises (>500 pers.), banques, consultings classiques, néerlandais obligatoire
    - EXCLURE les doublons
    - Ne retenir QUE les offres ★★★ minimum
 
-3. FILTRE DE DATE — RÈGLE ABSOLUE :
-   - Extrais la date si visible ("posted 2 days ago" → "il y a 2 jours", "Sep 26" → "26 sept.")
-   - Offre > 30 jours → EXCLURE
-   - Aucune date visible → EXCLURE (jamais inclure sans date confirmée)
-   - `is_new` = true UNIQUEMENT si postée hier ou aujourd'hui (≤ 48h)
+3. FILTRE DE DATE — RÈGLE ABSOLUE (non négociable) :
+   - Chaque résultat contient un champ `published_date` (date de crawl Tavily) ET le snippet peut contenir "X days ago" / "X weeks ago" / "X months ago"
+   - Si le snippet contient "months ago" (peu importe le nombre) → EXCLURE IMMÉDIATEMENT
+   - Si le snippet contient "> 4 weeks ago" → EXCLURE
+   - Si "no longer accepting applications" → EXCLURE
+   - Si aucune information de date n'est disponible → EXCLURE
+   - `posted_date` OBLIGATOIRE : note la date lisible ("il y a 2 jours", "28 sept.", etc.) — si tu ne peux pas la déterminer → EXCLURE l'offre
+   - `is_new` = true UNIQUEMENT si postée il y a ≤ 48h
 
 4. SCORING STARTUP :
    ★★★★★ Country Lead, associate/co-fondateur, Head of Sales, GTM Engineer chez startup IA/FinTech/SaaS belge
