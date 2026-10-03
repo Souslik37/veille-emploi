@@ -22,14 +22,23 @@ from groq import Groq
 
 PROFILE = """
 Alexandre Le Clercq — Head of Account Management chez Sortlist (marketplace B2B SaaS, Bruxelles).
-Expérience : gestion de comptes, ops commerciales, analytics, management d'équipes, scale B2B.
+Formation : Master universitaire (5 ans d'études supérieures).
+Expérience clé : pilotage de comptes stratégiques, analytics & reporting (KPIs, dashboards), management d'équipes (8+ pers.), ops commerciales à l'échelle, coordination de projets complexes multi-parties prenantes, construction de processus.
 
 Cherche par ordre de priorité :
 1. Associate / bras droit / co-fondateur pour lancer une activité
 2. GTM Engineer / RevOps / Sales Ops
 3. Head of Sales / Sales senior / Country Lead
 4. Manager commercial / BizDev senior
-5. Rôle opérationnel ou analytique dans le secteur de la santé (hôpitaux, cliniques, healthtech)
+5. Rôle dans le secteur de la santé — PAS SEULEMENT SALES : opérations, data/analytics, coordination de projets, management intermédiaire, chargé de mission
+
+PROFIL SANTÉ ÉLARGI — Alexandre n'est pas que "commercial". Son Master + expérience en pilotage de performance + management + coordination projets le qualifient pour :
+- Chef de projet / coordinateur de projets dans un hôpital ou réseau de santé
+- Business Analyst / Analyste de performance dans la santé
+- Responsable opérations ou qualité dans une clinique / réseau
+- Chargé de mission dans une fédération de santé, mutualité, INAMI, IRISCARE
+- Rôle GTM / ops / commercial dans une healthtech, medtech, pharma
+- Business Development ou Account Management dans le pharma / dispositifs médicaux
 
 EXCLUS : grands groupes généralistes, banques, consultings classiques, postes nécessitant le néerlandais.
 Localisation : Bruxelles, Wallonie, remote OK. Langues : français natif, anglais professionnel.
@@ -53,11 +62,19 @@ SEARCH_QUERIES = [
     'site:welcometothejungle.com sales manager OR "country manager" bruxelles startup',
     '"bras droit" fondateur commercial Belgique startup 2026',
     '"founding account executive" OR "founding sales" OR "GTM engineer" Belgium startup',
-    # ── Secteur Santé ──────────────────────────────────────────
-    'site:linkedin.com/jobs "responsable opérations" OR "directeur opérationnel" hôpital OR clinique Belgique 2026',
-    'site:linkedin.com/jobs "business analyst" OR "analyste performance" OR "chef de projet" santé OR healthcare Belgique',
-    'site:linkedin.com/jobs "operations manager" OR "project manager" OR "chief of staff" hospital OR healthcare Belgium',
-    'site:linkedin.com/jobs "digital health" OR "e-santé" OR "healthtech" operations OR commercial OR GTM Belgium 2026',
+    # ── Secteur Santé — 12 requêtes larges ────────────────────
+    'site:linkedin.com/jobs "chef de projet" OR "coordinateur" OR "responsable opérations" CHIREC OR "Saint-Luc" OR Erasme OR CHU Bruxelles 2026',
+    'site:linkedin.com/jobs "business analyst" OR "data analyst" OR manager "cliniques de l\'Europe" OR "cliniques universitaires" OR "Bois de la Pierre" Belgique',
+    'site:linkedin.com/jobs "chef de projet" OR "coordinateur" OR manager Vivalia OR "CHR Liège" OR "CHR Namur" OR "CHR Mons" 2026',
+    'site:linkedin.com/jobs "responsable" OR "directeur" OR "project manager" clinique OR hôpital Wallonie 2026',
+    'site:linkedin.com/jobs INAMI OR IRISCARE OR "mutualité chrétienne" OR "Solidaris" OR "mutualité neutre" coordinateur OR manager OR analyste',
+    '"fédération hospitalière" OR "fédération des maisons médicales" OR "Croix-Rouge Belgique" chef de projet OR chargé de mission OR manager 2026',
+    'site:linkedin.com/jobs "digital health" OR "e-santé" OR healthtech OR medtech Belgium operations OR "project manager" OR GTM 2026',
+    'site:linkedin.com/jobs pharma OR pharmaceutical OR biotech "project manager" OR "business development" OR "account manager" Belgique Belgium 2026',
+    '"responsable opérations" OR "chef de projet" OR "coordinateur médical" hôpital OR clinique Bruxelles OR Wallonie 2026',
+    '"business analyst" OR "analyste performance" santé OR healthcare OR soins Belgique 2026',
+    '"operations manager" OR "chargé de mission" OR "responsable" mutualité OR assurance-maladie OR pharma Belgique 2026',
+    '"directeur adjoint" OR "directeur opérationnel" OR "responsable qualité" OR "cadre" santé OR hôpital OR clinique Belgique 2026',
 ]
 
 # ─────────────────────────────────────────────────────────────────
@@ -99,6 +116,7 @@ TOOLS = [
                                 "sector":       {"type": "string"},
                                 "loc":          {"type": "string", "enum": ["bxl", "be", "remote"]},
                                 "fit":          {"type": "string"},
+                                "salary":       {"type": ["string", "null"]},
                                 "is_new":       {"type": ["boolean", "null"]},
                                 "posted_date":  {"type": ["string", "null"]}
                             },
@@ -224,6 +242,97 @@ _PAGES_JS = """
 })();
 """
 
+_SANTE_CSS = """
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#EAF7FA;color:#1d1d1f;min-height:100vh}
+.wrap{max-width:980px;margin:0 auto;padding:24px 16px}
+.header{background:#fff;border-radius:18px;padding:24px 28px;margin-bottom:14px;box-shadow:0 2px 12px rgba(0,0,0,.07);border-top:4px solid #0AA5B8}
+.header h1{font-size:22px;font-weight:700;margin-bottom:4px}
+.header .sub{color:#6e6e73;font-size:12.5px;margin-bottom:16px}
+.profile-box{background:#EAF7FA;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:12.5px;color:#0C5460;line-height:1.6;border-left:3px solid #0AA5B8}
+.stats{display:flex;gap:8px;flex-wrap:wrap}
+.stat{background:#f5f5f7;border-radius:10px;padding:10px 16px;text-align:center;min-width:76px}
+.stat-n{font-size:22px;font-weight:700}
+.stat-l{font-size:10px;color:#6e6e73;margin-top:2px;text-transform:uppercase;letter-spacing:.4px}
+.stat.teal{background:#D1ECF1;border:1px solid #0AA5B8}
+.stat.teal .stat-n,.stat.teal .stat-l{color:#0C5460}
+.back-link{display:inline-flex;align-items:center;gap:6px;color:#0AA5B8;font-size:13px;font-weight:600;text-decoration:none;margin-bottom:14px}
+.back-link:hover{color:#0C5460}
+.filters{background:#fff;border-radius:14px;padding:14px 18px;margin-bottom:14px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.frow{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:8px}
+.frow:last-child{margin-bottom:0}
+.flabel{font-size:10px;font-weight:700;color:#8e8e93;text-transform:uppercase;letter-spacing:.6px;margin-right:2px;min-width:36px}
+.fbtn{background:#f5f5f7;border:1.5px solid transparent;border-radius:18px;padding:4px 11px;font-size:11.5px;color:#3c3c43;cursor:pointer;transition:all .15s;font-family:inherit}
+.fbtn:hover{background:#e5e5ea}
+.fbtn.active{background:#0AA5B8;color:#fff;border-color:#0AA5B8}
+.section-title{font-size:14px;font-weight:600;margin:16px 0 8px;display:flex;align-items:center;gap:7px}
+.sc{font-size:11px;font-weight:500;color:#8e8e93;background:#e5e5ea;border-radius:9px;padding:1px 7px}
+.cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(430px,1fr));gap:12px}
+.card{position:relative;background:#fff;border-radius:14px;padding:16px 18px;box-shadow:0 2px 8px rgba(0,0,0,.06);border-left:4px solid #0AA5B8;transition:box-shadow .15s,opacity .2s,transform .2s}
+.card:hover{box-shadow:0 4px 18px rgba(0,0,0,.11)}
+.card.s5{border-left-color:#FFB800}.card.s4{border-left-color:#30D158}.card.s3{border-left-color:#32ADE6}
+.dismiss{position:absolute;top:8px;right:10px;width:22px;height:22px;background:none;border:none;color:#d1d1d6;font-size:15px;cursor:pointer;border-radius:50%;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .15s,color .15s}
+.card:hover .dismiss{opacity:1}.dismiss:hover{color:#FF3B30}
+.ctitle{font-size:15px;font-weight:700;margin-bottom:3px;padding-right:24px;line-height:1.3}
+.cco{font-size:13px;font-weight:600;color:#3c3c43;margin-bottom:1px}
+.cdesc{font-size:11.5px;color:#8e8e93;font-style:italic;margin-bottom:8px;line-height:1.4}
+.stars{font-size:11.5px;color:#FFB800;letter-spacing:1px}
+.salary-row{display:flex;align-items:center;gap:6px;margin-bottom:8px}
+.salary-badge{background:#E8F8FB;color:#0C5460;border:1px solid #0AA5B8;border-radius:8px;padding:4px 10px;font-size:12px;font-weight:600}
+.salary-badge.estimated{background:#F5F5F7;color:#6e6e73;border-color:#e5e5e7;font-weight:500}
+.tags{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px}
+.tag{border-radius:14px;padding:2px 8px;font-size:11px;font-weight:500}
+.tag.tnew{background:#FF3B30;color:#fff;font-weight:700}
+.tag.tsect{background:#D1ECF1;color:#0C5460}
+.tag.tloc{background:#E8FAF0;color:#1A7F45}
+.tag.tloc.tremote{background:#F0EDFF;color:#5038D0}
+.tag.tdate{background:#F5F5F7;color:#6e6e73}
+.fit{background:#E8F8FB;border-left:3px solid #0AA5B8;border-radius:0 8px 8px 0;padding:9px 12px;font-size:12.5px;color:#0C5460;margin:7px 0 10px;line-height:1.5}
+.fit b{font-weight:700}
+.cta{display:inline-block;background:#0AA5B8;color:#fff;text-decoration:none;padding:7px 16px;border-radius:18px;font-size:12px;font-weight:600}
+.cta:hover{background:#0C5460}
+@media(max-width:600px){.cards-grid{grid-template-columns:1fr}.wrap{padding:16px 10px}}
+"""
+
+_SANTE_JS = """
+(function() {
+  const dismissed = new Set(JSON.parse(sessionStorage.getItem('vs') || '[]'));
+  dismissed.forEach(id => { const el = document.getElementById(id); if(el) el.style.display='none'; });
+
+  let activeSect = null, minStars = 0;
+  function applyFilters() {
+    document.querySelectorAll('.card').forEach(card => {
+      if(dismissed.has(card.id)) return;
+      const ok = (!activeSect || card.dataset.sect === activeSect) && parseInt(card.dataset.stars) >= minStars;
+      card.style.display = ok ? '' : 'none';
+    });
+  }
+  document.querySelectorAll('.sect-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      activeSect = (activeSect === btn.dataset.sect) ? null : btn.dataset.sect;
+      document.querySelectorAll('.sect-btn').forEach(b => b.classList.toggle('active', b.dataset.sect === activeSect));
+      applyFilters();
+    });
+  });
+  document.querySelectorAll('.stars-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const v = parseInt(btn.dataset.min);
+      minStars = (minStars === v) ? 0 : v;
+      document.querySelectorAll('.stars-btn').forEach(b => b.classList.toggle('active', parseInt(b.dataset.min) === minStars));
+      applyFilters();
+    });
+  });
+  document.querySelectorAll('.dismiss').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const card = btn.closest('.card');
+      card.style.opacity='0'; card.style.transform='scale(0.95)';
+      setTimeout(() => card.style.display='none', 180);
+      dismissed.add(card.id); sessionStorage.setItem('vs', JSON.stringify([...dismissed]));
+    });
+  });
+})();
+"""
+
 # ─────────────────────────────────────────────────────────────────
 #  HELPERS HTML
 # ─────────────────────────────────────────────────────────────────
@@ -321,7 +430,7 @@ def _build_pages_html(jobs: list, top_insight: str, date_str: str) -> str:
 <div class="wrap">
   <div class="header">
     <h1>Veille emploi — {date_str}</h1>
-    <p class="sub">Alexandre Le Clercq · Agent autonome Groq + Tavily</p>
+    <p class="sub">Alexandre Le Clercq · Agent autonome Groq + Tavily · <a href="./sante.html" style="color:#0AA5B8;font-weight:600">🏥 Page Santé →</a></p>
     <div class="stats">{stats}</div>
   </div>
   <div class="insight"><b>💡 Insight du jour :</b> {top_insight}</div>
@@ -348,7 +457,7 @@ def _build_pages_html(jobs: list, top_insight: str, date_str: str) -> str:
 def _build_email_html(jobs: list, top_insight: str, date_str: str) -> str:
     """Email compact : insight + nouveautés + top picks + lien vers rapport complet."""
     new_jobs  = [j for j in sorted(jobs, key=lambda x: -x["stars"]) if j.get("is_new")]
-    top_picks = [j for j in sorted(jobs, key=lambda x: -x["stars"]) if x["stars"] >= 4]
+    top_picks = [j for j in sorted(jobs, key=lambda x: -x["stars"]) if j["stars"] >= 4]
 
     def _mini(job):
         n = job["stars"]; color = _STAR_COLORS.get(n, "#98989D")
@@ -427,6 +536,92 @@ def _build_email_html(jobs: list, top_insight: str, date_str: str) -> str:
 </div></body></html>"""
 
 
+def _build_sante_html(jobs: list, date_str: str) -> str:
+    """Page dédiée secteur santé — large, avec salaire et matching profil complet."""
+    sorted_jobs = sorted(jobs, key=lambda x: (0 if x.get("is_new") else 1, -x["stars"]))
+    top_picks = [j for j in sorted_jobs if j["stars"] >= 4]
+
+    stats = (
+        f'<div class="stat teal"><div class="stat-n">{len(jobs)}</div><div class="stat-l">Opportunités</div></div>'
+        f'<div class="stat teal"><div class="stat-n">{len(top_picks)}</div><div class="stat-l">Top picks ★★★★+</div></div>'
+        f'<div class="stat"><div class="stat-n">{len([j for j in jobs if j.get("salary")])}</div><div class="stat-l">Avec salaire</div></div>'
+    )
+
+    sectors = sorted(set(j.get("sector", "Santé") for j in jobs))
+    sect_btns = "".join(
+        f'<button class="fbtn sect-btn" data-sect="{s}">{s}</button>' for s in sectors
+    )
+
+    def _scard(job: dict, idx: int) -> str:
+        n = job["stars"]
+        stars = "★" * n + "☆" * (5 - n)
+        loc = job.get("loc", "bxl")
+        loc_cls = "tag tloc" + (" tremote" if loc == "remote" else "")
+        new_tag = '<span class="tag tnew">🆕 NOUVEAU</span>' if job.get("is_new") else ""
+        date_tag = f'<span class="tag tdate">📅 {job["posted_date"]}</span>' if job.get("posted_date") else ""
+        sect = job.get("sector", "Santé")
+
+        sal = job.get("salary")
+        if sal:
+            is_est = "estimation" in sal.lower() or "ific" in sal.lower()
+            sal_cls = "salary-badge estimated" if is_est else "salary-badge"
+            salary_row = f'<div class="salary-row"><span class="{sal_cls}">💶 {sal}</span></div>'
+        else:
+            salary_row = '<div class="salary-row"><span class="salary-badge estimated">💶 Salaire non communiqué</span></div>'
+
+        return f"""<div class="card s{n}" id="s{idx}" data-stars="{n}" data-sect="{sect}">
+  <button class="dismiss" title="Masquer">×</button>
+  <div class="ctitle">{job['title']}</div>
+  <div class="cco">{job['company']} <span class="stars">{stars}</span></div>
+  <div class="cdesc">{job.get('company_desc') or ''}</div>
+  {salary_row}
+  <div class="tags">
+    {new_tag}<span class="tag tsect">{sect}</span>
+    <span class="{loc_cls}">{loc}</span>{date_tag}
+  </div>
+  <div class="fit"><b>Pourquoi ton profil matche :</b> {job['fit']}</div>
+  <a class="cta" href="{job['url']}" target="_blank" rel="noopener">Voir l'offre →</a>
+</div>"""
+
+    all_cards = "".join(_scard(j, i) for i, j in enumerate(sorted_jobs))
+
+    return f"""<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Veille Santé — {date_str}</title>
+<style>{_SANTE_CSS}</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back-link" href="./index.html">← Rapport principal</a>
+  <div class="header">
+    <h1>🏥 Veille Santé — {date_str}</h1>
+    <p class="sub">Alexandre Le Clercq · Ciblage large secteur santé belge</p>
+    <div class="profile-box">
+      <b>Profil :</b> Master universitaire (5 ans) · Head of AM (management 8+ pers.) · Analytics & KPIs · Coordination de projets · Ops B2B SaaS<br>
+      <b>Secteurs couverts :</b> Hôpitaux &amp; cliniques · Mutalités · INAMI/IRISCARE · HealthTech · Pharma · Dispositifs médicaux · Fédérations de santé
+    </div>
+    <div class="stats">{stats}</div>
+  </div>
+  <div class="filters">
+    <div class="frow"><span class="flabel">Secteur</span>{sect_btns}</div>
+    <div class="frow"><span class="flabel">Stars</span>
+      <button class="fbtn stars-btn" data-min="5">★★★★★</button>
+      <button class="fbtn stars-btn" data-min="4">★★★★+</button>
+      <button class="fbtn stars-btn" data-min="3">★★★+</button>
+    </div>
+  </div>
+  <div class="section-title">💼 Toutes les opportunités santé <span class="sc">{len(jobs)}</span></div>
+  <div class="cards-grid">{all_cards}</div>
+  <div style="text-align:center;padding:28px 0 16px;color:#aeaeb2;font-size:11px">
+    Généré le {datetime.now().strftime('%d/%m/%Y à %H:%M')} · Groq + Tavily · <a href="./index.html" style="color:#0AA5B8">Rapport principal →</a>
+  </div>
+</div>
+<script>{_SANTE_JS}</script>
+</body></html>"""
+
+
 # ─────────────────────────────────────────────────────────────────
 #  IMPLÉMENTATIONS DES TOOLS
 # ─────────────────────────────────────────────────────────────────
@@ -483,14 +678,20 @@ def send_report(jobs: list, top_insight: str) -> dict:
     if filtered_count:
         print(f"  🗑️   {filtered_count} offre(s) trop ancienne(s) supprimée(s) (filtre programmatique)")
 
+    med_jobs = [j for j in jobs if j.get("type") == "med"]
     html_pages = _build_pages_html(jobs, top_insight, date_str)
     html_email = _build_email_html(jobs, top_insight, date_str)
+    html_sante = _build_sante_html(med_jobs, date_str) if med_jobs else None
 
     out_dir = os.environ.get("REPORT_DIR", "/tmp/veille_jobs")
     os.makedirs(out_dir, exist_ok=True)
     for fname in [f"rapport_{date_file}.html", "latest.html"]:
         with open(os.path.join(out_dir, fname), "w", encoding="utf-8") as f:
             f.write(html_pages)
+    if html_sante:
+        with open(os.path.join(out_dir, "sante.html"), "w", encoding="utf-8") as f:
+            f.write(html_sante)
+        print(f"  🏥  Page santé sauvegardée — {len(med_jobs)} offres")
 
     top3    = sorted(jobs, key=lambda x: -x["stars"])[:3]
     preview = " · ".join(f"{j['company']} ({j['stars']}★)" for j in top3)
@@ -547,14 +748,23 @@ INSTRUCTIONS :
    ★★★★  Sales Manager, GTM Lead, RevOps, Sales Ops, Operational Lead chez scaleup B2B
    ★★★   BDM, AE senior, rôle intéressant mais secteur moins prioritaire
 
-5. SCORING MÉDICAL (type="med") — pour les offres dans les hôpitaux, cliniques, healthtech :
+5. SCORING MÉDICAL (type="med") — pour les offres dans les hôpitaux, cliniques, mutalités, pharma, healthtech :
    ★★★★★ Directeur des opérations, Chief of Staff, Head of Operations hôpital/clinique belge
-   ★★★★  Business Analyst santé, Data Analyst healthcare, Chef de projet digital health
-   ★★★   Coordinateur de projets, Analyste performance, rôle opérationnel healthtech
-   → Le champ `fit` doit expliquer comment l'expérience SaaS B2B + AM + ops d'Alexandre se traduit dans ce contexte médical.
-   → `sector` = "Santé" ou "HealthTech" ou "Digital Health"
+   ★★★★  Business Analyst santé, Data Analyst healthcare, Chef de projet digital health, BizDev pharma/medtech
+   ★★★   Coordinateur de projets, Analyste performance, chargé de mission, rôle opérationnel healthtech
+   → PROFIL ÉLARGI : Alexandre a un MASTER UNIVERSITAIRE (5 ans). Ne te limite pas au profil "sales".
+     Considère sa capacité à : piloter des KPIs/dashboards, manager des équipes, coordonner des projets multi-parties, travailler en environnement structuré.
+   → Le champ `fit` doit valoriser le Master + les compétences ops/analytics/management, PAS seulement les skills commerciales.
+   → `sector` = "Santé" ou "HealthTech" ou "Pharma" ou "Mutualité" ou "Médical"
 
-6. Appelle `send_report` UNE SEULE FOIS avec la liste finale triée par note décroissante.
+6. SALAIRE — pour chaque offre, renseigne `salary` :
+   → Si mentionné dans l'offre → copie verbatim
+   → Pour rôles hôpital/clinique belge non mentionné → référence IFIC : coordinateur/analyste "IFIC 14-16 (~€2 800-3 500/mois)", manager "IFIC 17-19 (~€3 500-5 000/mois)", directeur "IFIC 19+ (~€5 000-7 000/mois)"
+   → Pour healthtech/startup → estimation marché : "marché ~€X 000-X 000/mois (estimation)"
+   → Pour pharma → "pharma BE ~€X 000-X 000/mois (estimation)"
+   → Si vraiment inconnu → null
+
+7. Appelle `send_report` UNE SEULE FOIS avec la liste finale triée par note décroissante.
 """
 
 
@@ -605,6 +815,7 @@ def run_agent():
             print(f"⚠️  Stop inattendu : {choice.finish_reason}")
             break
 
+        report_sent = False
         for tc in message.tool_calls:
             name = tc.function.name
             args = json.loads(tc.function.arguments)
@@ -616,10 +827,15 @@ def run_agent():
             elif name == "send_report":
                 result = send_report(args["jobs"], args["top_insight"])
                 print(f"  ✉️   Email envoyé — {result}")
+                report_sent = True
             else:
                 result = {"error": f"Outil inconnu : {name}"}
 
             messages.append({"role": "tool", "tool_call_id": tc.id, "content": json.dumps(result, ensure_ascii=False)})
+
+        if report_sent:
+            print("\n✅  Rapport envoyé — arrêt de la boucle.")
+            break
 
 
 if __name__ == "__main__":

@@ -47,6 +47,7 @@ jobs:
           cp /tmp/veille_jobs/latest.html docs/latest.html
           DATE=$(date +%Y%m%d)
           cp /tmp/veille_jobs/latest.html docs/rapport_${DATE}.html
+          [ -f /tmp/veille_jobs/sante.html ] && cp /tmp/veille_jobs/sante.html docs/sante.html || true
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           gh auth setup-git
