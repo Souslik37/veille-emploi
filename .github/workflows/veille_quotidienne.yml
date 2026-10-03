@@ -34,6 +34,7 @@ jobs:
           TO_EMAIL:          ${{ secrets.TO_EMAIL }}
           FROM_EMAIL:        ${{ secrets.FROM_EMAIL }}
           REPORT_DIR:        /tmp/veille_jobs
+          JOBS_DB:           ${{ github.workspace }}/docs/jobs.json
         run: python veille_agent/agent.py
 
       - name: Publier rapport sur GitHub Pages
@@ -48,6 +49,7 @@ jobs:
           DATE=$(date +%Y%m%d)
           cp /tmp/veille_jobs/latest.html docs/rapport_${DATE}.html
           [ -f /tmp/veille_jobs/sante.html ] && cp /tmp/veille_jobs/sante.html docs/sante.html || true
+          [ -f /tmp/veille_jobs/jobs.json ] && cp /tmp/veille_jobs/jobs.json docs/jobs.json || true
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           gh auth setup-git

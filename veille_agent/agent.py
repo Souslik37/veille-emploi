@@ -370,6 +370,8 @@ def _card_html(job: dict, idx: int) -> str:
     card_cls = f"card s{n}" + (" med" if is_med else "")
     new_tag = '<span class="tag tnew">🆕 NOUVEAU</span>' if job.get("is_new") else ""
     date_tag = f'<span class="tag tdate">📅 {job["posted_date"]}</span>' if job.get("posted_date") else ""
+    fd = job.get("found_date")
+    found_tag = f'<span class="tag tdate">🗂️ trouvé {fd}</span>' if fd and not job.get("is_new") else ""
     loc = job.get("loc", "bxl")
     loc_cls = "tag tloc" + (" tremote" if loc == "remote" else "")
     type_cls = "tag ttype" + (" tmed" if is_med else "")
@@ -383,7 +385,7 @@ def _card_html(job: dict, idx: int) -> str:
   <div class="tags">
     {new_tag}<span class="{type_cls}">{_TYPE_LABELS.get(t, t)}</span>
     <span class="tag tsect">{job.get('sector', '')}</span>
-    <span class="{loc_cls}">{loc}</span>{date_tag}
+    <span class="{loc_cls}">{loc}</span>{date_tag}{found_tag}
   </div>
   <div class="{fit_cls}"><b>Pourquoi toi :</b> {job['fit']}</div>
   <a class="cta" href="{job['url']}" target="_blank" rel="noopener">Voir l'offre →</a>
@@ -398,10 +400,11 @@ def _build_pages_html(jobs: list, top_insight: str, date_str: str) -> str:
     top_picks = [j for j in jobs if j["stars"] >= 4]
 
     # Stats
+    new_today = [j for j in sorted_jobs if j.get("is_new")]
     stats = (
-        f'<div class="stat"><div class="stat-n">{len(jobs)}</div><div class="stat-l">Offres</div></div>'
+        f'<div class="stat"><div class="stat-n">{len(jobs)}</div><div class="stat-l">Total accumulées</div></div>'
         f'<div class="stat"><div class="stat-n">{len(top_picks)}</div><div class="stat-l">Top picks ★★★★+</div></div>'
-        f'<div class="stat hot"><div class="stat-n">{len(new_jobs)}</div><div class="stat-l">🔥 Nouvelles 48h</div></div>'
+        f'<div class="stat hot"><div class="stat-n">{len(new_today)}</div><div class="stat-l">🔥 Nouvelles aujourd\'hui</div></div>'
     )
 
     # Nouveautés
@@ -703,24 +706,71 @@ def _is_stale(job: dict) -> bool:
 _MOIS_FR = ["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"]
 
 
+def _load_prev_jobs(jobs_db_path: str) -> dict:
+    """Charge les jobs précédents depuis jobs.json, retourne un dict {url: job}."""
+    if not jobs_db_path or not os.path.exists(jobs_db_path):
+        return {}
+    try:
+        with open(jobs_db_path, encoding="utf-8") as f:
+            return {j["url"]: j for j in json.load(f)}
+    except Exception:
+        return {}
+
+
 def send_report(jobs: list, top_insight: str) -> dict:
     now = datetime.now()
     date_str  = f"{now.day} {_MOIS_FR[now.month - 1]} {now.year}"
     date_file = now.strftime("%Y%m%d")
+    today_str = now.strftime("%Y-%m-%d")
 
+    # ── Filtre anti-offres périmées ──────────────────────────────
     before = len(jobs)
     jobs = [j for j in jobs if not _is_stale(j)]
-    filtered_count = before - len(jobs)
-    if filtered_count:
-        print(f"  🗑️   {filtered_count} offre(s) trop ancienne(s) supprimée(s) (filtre programmatique)")
+    if before - len(jobs):
+        print(f"  🗑️   {before - len(jobs)} offre(s) périmée(s) supprimée(s)")
+
+    # ── Accumulation : fusion avec les jobs précédents ───────────
+    jobs_db_path = os.environ.get("JOBS_DB")
+    prev = _load_prev_jobs(jobs_db_path)
+    print(f"  📂  {len(prev)} offre(s) précédente(s) chargée(s)")
+
+    new_urls = set()
+    for j in jobs:
+        if j["url"] not in prev:
+            j["found_date"] = today_str
+            j["is_new"] = True
+            new_urls.add(j["url"])
+        else:
+            j["found_date"] = prev[j["url"]].get("found_date", today_str)
+            j.setdefault("is_new", False)
+        prev[j["url"]] = j  # met à jour le score si recrawlé
+
+    # Garde les anciens jobs (≤ 60 jours) non recrawlés aujourd'hui
+    cutoff = now.toordinal() - 60
+    for url, old_job in prev.items():
+        if url in new_urls or any(j["url"] == url for j in jobs):
+            continue
+        try:
+            fd = datetime.strptime(old_job.get("found_date", today_str), "%Y-%m-%d")
+            if fd.toordinal() >= cutoff:
+                old_job["is_new"] = False
+                jobs.append(old_job)
+        except Exception:
+            pass
+
+    print(f"  📊  {len(jobs)} offres au total ({len(new_urls)} nouvelles aujourd'hui)")
+
+    # ── Sauvegarde jobs.json ─────────────────────────────────────
+    out_dir = os.environ.get("REPORT_DIR", "/tmp/veille_jobs")
+    os.makedirs(out_dir, exist_ok=True)
+    with open(os.path.join(out_dir, "jobs.json"), "w", encoding="utf-8") as f:
+        json.dump(jobs, f, ensure_ascii=False, indent=2)
 
     med_jobs = [j for j in jobs if j.get("type") == "med"]
     html_pages = _build_pages_html(jobs, top_insight, date_str)
     html_email = _build_email_html(jobs, top_insight, date_str)
     html_sante = _build_sante_html(med_jobs, date_str) if med_jobs else None
 
-    out_dir = os.environ.get("REPORT_DIR", "/tmp/veille_jobs")
-    os.makedirs(out_dir, exist_ok=True)
     for fname in [f"rapport_{date_file}.html", "latest.html"]:
         with open(os.path.join(out_dir, fname), "w", encoding="utf-8") as f:
             f.write(html_pages)
