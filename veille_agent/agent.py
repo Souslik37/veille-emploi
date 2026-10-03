@@ -87,6 +87,13 @@ SEARCH_QUERIES = [
     # ── Santé ── Medination ──────────────────────────────────────
     'site:medination.com manager OR coordinateur OR "chef de projet" OR analyste OR directeur',
     'site:medination.com responsable OR "chargé de mission" OR "business developer" OR "account manager"',
+    # ── Santé ── Hôpitaux bruxellois par nom sur Indeed ──────────
+    'site:indeed.com "Hôpital Universitaire de Bruxelles" OR "HUB" responsable OR manager OR coordinateur OR analyste OR directeur',
+    'site:indeed.com CHIREC OR "Cliniques universitaires Saint-Luc" responsable OR manager OR coordinateur OR "chef de projet"',
+    'site:indeed.com Erasme OR Vivalia OR "CHR Liège" OR "CHR Namur" responsable OR coordinateur OR chef OR manager',
+    # ── Santé ── Sites carrières hôpitaux belges ──────────────────
+    'site:hub.brussels emploi OR careers responsable OR manager OR coordinateur OR analyste OR directeur',
+    'site:chirec.be OR site:vivalia.be emploi OR offres responsable OR manager OR coordinateur',
     # ── Santé ── Requêtes larges ─────────────────────────────────
     '"chef de projet santé" OR "coordinateur santé" OR "analyste santé" Belgique Bruxelles Wallonie emploi',
     '"chargé de mission" OR "responsable opérations" hôpital OR mutualité OR INAMI Bruxelles Wallonie emploi',
